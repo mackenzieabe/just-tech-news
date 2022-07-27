@@ -15,3 +15,4 @@ app.use(routes);
 sequelize.sync({ force: false }).then(() => {
   app.listen(PORT, () => console.log('Now listening'));
 });
+//force:true performs similarly to DROP TABLE IF EXISTS allowing table to be overwritten and re-created 
