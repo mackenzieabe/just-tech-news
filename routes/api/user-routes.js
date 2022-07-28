@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { User } = require('../../models');
+const { User, Post, Vote } = require('../../models');
 
 // get all users
 router.get('/', (req, res) => {
@@ -18,7 +18,20 @@ router.get('/:id', (req, res) => {
     attributes: { exclude: ['password'] },
     where: {
       id: req.params.id
-    }
+    },
+    include: [// When we query users, we'll get back a list of posts that a user has actually created and a list of posts that a user has voted on. This will be the first time we use that through table association we created earlier!
+      {
+        model: Post,
+        attributes: ['id', 'title', 'post_url', 'created_at']
+      },
+      {
+        model: Post,
+        attributes: ['title'],
+        through: Vote,
+        as: 'voted_posts'
+        //Now when we query a user, we can see which posts a user has created and which posts a user has voted on, which will come under the property name voted_posts, so that we know which set of data is which.
+      }
+    ]
   })
     .then(dbUserData => {
       if (!dbUserData) {
@@ -49,7 +62,7 @@ router.post('/', (req, res) => {
 
 router.post('/login', (req, res) => {
   // expects {email: 'lernantino@gmail.com', password: 'password1234'}
-  User.findOne({ //The .findOne() Sequelize method looks for a user with the specified email. 
+  User.findOne({
     where: {
       email: req.body.email
     }
@@ -59,9 +72,7 @@ router.post('/login', (req, res) => {
       return;
     }
 
-    const validPassword = dbUserData.checkPassword(req.body.password);//refer to user.js model: 
-    //The .compareSync() method, which is inside the .checkPassword() method, can then confirm or deny that the supplied password matches the hashed password stored on the object.
-    
+    const validPassword = dbUserData.checkPassword(req.body.password);
 
     if (!validPassword) {
       res.status(400).json({ message: 'Incorrect password!' });
