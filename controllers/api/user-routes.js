@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { User, Post, Vote } = require('../../models');
+const { User, Post, Comment, Vote } = require('../../models');
 
 // get all users
 router.get('/', (req, res) => {
@@ -19,7 +19,7 @@ router.get('/:id', (req, res) => {
     where: {
       id: req.params.id
     },
-    include: [// When we query users, we'll get back a list of posts that a user has actually created and a list of posts that a user has voted on. This will be the first time we use that through table association we created earlier!
+    include: [ // When we query users, we'll get back a list of posts that a user has actually created and a list of posts that a user has voted on. This will be the first time we use that through table association we created earlier!
       {
         model: Post,
         attributes: ['id', 'title', 'post_url', 'created_at']
@@ -37,7 +37,7 @@ router.get('/:id', (req, res) => {
         attributes: ['title'],
         through: Vote,
         as: 'voted_posts'
-        //Now when we query a user, we can see which posts a user has created and which posts a user has voted on, which will come under the property name voted_posts, so that we know which set of data is which.
+         //Now when we query a user, we can see which posts a user has created and which posts a user has voted on, which will come under the property name voted_posts, so that we know which set of data is which.
       }
     ]
   })
@@ -61,7 +61,16 @@ router.post('/', (req, res) => {
     email: req.body.email,
     password: req.body.password
   })
-    .then(dbUserData => res.json(dbUserData))
+    .then(dbUserData => {
+      req.session.save(() => { //The req.session.save() method will initiate the creation of the session and then run the callback function once complete.
+        req.session.user_id = dbUserData.id;
+        req.session.username = dbUserData.username;
+        req.session.loggedIn = true;
+         //This gives our server easy access to the user's user_id, username, and a Boolean describing whether or not the user is logged in.
+  
+        res.json(dbUserData);
+      });
+    })
     .catch(err => {
       console.log(err);
       res.status(500).json(err);
@@ -87,8 +96,25 @@ router.post('/login', (req, res) => {
       return;
     }
 
-    res.json({ user: dbUserData, message: 'You are now logged in!' });
+    req.session.save(() => {
+      req.session.user_id = dbUserData.id;
+      req.session.username = dbUserData.username;
+      req.session.loggedIn = true;
+  
+      res.json({ user: dbUserData, message: 'You are now logged in!' });
+    });
   });
+});
+
+router.post('/logout', (req, res) => {
+  if (req.session.loggedIn) {
+    req.session.destroy(() => {
+      res.status(204).end();
+    });
+  }
+  else {
+    res.status(404).end();
+  }
 });
 
 router.put('/:id', (req, res) => {
@@ -102,7 +128,7 @@ router.put('/:id', (req, res) => {
     }
   })
     .then(dbUserData => {
-      if (!dbUserData[0]) {
+      if (!dbUserData) {
         res.status(404).json({ message: 'No user found with this id' });
         return;
       }
