@@ -19,7 +19,7 @@ router.get('/:id', (req, res) => {
     where: {
       id: req.params.id
     },
-    include: [ // When we query users, we'll get back a list of posts that a user has actually created and a list of posts that a user has voted on. This will be the first time we use that through table association we created earlier!
+    include: [
       {
         model: Post,
         attributes: ['id', 'title', 'post_url', 'created_at']
@@ -37,7 +37,6 @@ router.get('/:id', (req, res) => {
         attributes: ['title'],
         through: Vote,
         as: 'voted_posts'
-         //Now when we query a user, we can see which posts a user has created and which posts a user has voted on, which will come under the property name voted_posts, so that we know which set of data is which.
       }
     ]
   })
@@ -62,11 +61,10 @@ router.post('/', (req, res) => {
     password: req.body.password
   })
     .then(dbUserData => {
-      req.session.save(() => { //The req.session.save() method will initiate the creation of the session and then run the callback function once complete.
+      req.session.save(() => {
         req.session.user_id = dbUserData.id;
         req.session.username = dbUserData.username;
         req.session.loggedIn = true;
-         //This gives our server easy access to the user's user_id, username, and a Boolean describing whether or not the user is logged in.
   
         res.json(dbUserData);
       });
